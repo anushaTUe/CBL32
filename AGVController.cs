@@ -277,6 +277,7 @@ namespace RosSharp.Control
         {
             // getting the map grid from map manager class
             map = mapManager.mapGrid;
+            gridSize = 100;
 
             // if the coordinate is not a free space, then it is not a frontier
             if (map[x, y] != 0)
