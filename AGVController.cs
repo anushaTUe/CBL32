@@ -9,7 +9,7 @@ using rcl_interfaces.msg;
 
 namespace RosSharp.Control
 {
-    public enum ControlMode { Keyboard, ROS};
+    public enum ControlMode { Keyboard, ROS };
 
     public class AGVController : MonoBehaviour
     {
@@ -20,10 +20,10 @@ namespace RosSharp.Control
         private ArticulationBody wA1;
         private ArticulationBody wA2;
 
-        public float maxLinearSpeed = 2; //  m/s
-        public float maxRotationalSpeed = 1;//
-        public float wheelRadius = 0.033f; //meters
-        public float trackWidth = 0.288f; // meters Distance between tyres
+        public float maxLinearSpeed = 2;
+        public float maxRotationalSpeed = 1;
+        public float wheelRadius = 0.033f;
+        public float trackWidth = 0.288f;
         public float forceLimit = 10;
         public float damping = 10;
 
@@ -37,6 +37,15 @@ namespace RosSharp.Control
 
         private MapManager mapManager;
 
+        public int frontierCount = 0;
+        private Vector3 currentGoal;
+        private bool navigatingToGoal = false;
+        private float goalTolerance = 0.05f;
+
+        private int[,] map;
+        private int gridSize = 100;
+        private float cellSize = 0.01f;
+
         void Start()
         {
             wA1 = wheel1.GetComponent<ArticulationBody>();
@@ -46,6 +55,7 @@ namespace RosSharp.Control
             ros = ROSConnection.GetOrCreateInstance();
             ros.Subscribe<TwistMsg>("cmd_vel", ReceiveROSCmd);
             ros.RegisterPublisher<TwistMsg>("cmd_vel");
+            mapManager = FindObjectOfType<MapManager>();
         }
 
         void ReceiveROSCmd(TwistMsg cmdVel)
@@ -58,26 +68,26 @@ namespace RosSharp.Control
 
             else if (cmdVel.linear.x < 0)
             {
-                rosLinear = (float)((float)cmdVel.linear.x - 0.02);
+                rosLinear = (float)(cmdVel.linear.x - 0.02);
             }
             else if (cmdVel.angular.z < 0)
             {
-                rosAngular = (float)((float)cmdVel.angular.z - 0.18);
+                rosAngular = (float)(cmdVel.angular.z - 0.18);
             }
             else if (cmdVel.linear.x > 0)
             {
-                rosLinear = (float)((float)cmdVel.linear.x + 0.02); //(float)cmdVel.linear.x ;//added 0.05 to account for friction 
+                rosLinear = (float)(cmdVel.linear.x + 0.02);
             }
             else if (cmdVel.angular.z > 0)
             {
-                rosAngular = (float)((float)cmdVel.angular.z + 0.18); //(float)cmdVel.angular.z; //added 0.03 to acct for friction
+                rosAngular = (float)(cmdVel.angular.z + 0.18);
             }
             lastCmdReceived = Time.time;
         }
 
         void FixedUpdate()
         {
-            Move(new Vector3(-10, 0, 0));
+            //Move(new Vector3(-10, 0, 0));
             /*
             if (mode == ControlMode.Keyboard)
             {
@@ -88,6 +98,32 @@ namespace RosSharp.Control
                 ROSUpdate();
             }     
             */
+
+            if (!navigatingToGoal)
+            {
+                Vector3 nextFrontier;
+                if (FindNextFrontier(out nextFrontier))
+                {
+                    currentGoal = nextFrontier;
+                    navigatingToGoal = true;
+                    Move(currentGoal);
+                }
+                else
+                {
+                    Debug.Log("no frontiers left");
+                }
+            }
+            else
+            {
+                if (HasReachedGoal(currentGoal))
+                {
+                    navigatingToGoal = false;
+                }
+                else
+                {
+                    Move(currentGoal);
+                }
+            }
         }
 
         private void SetParameters(ArticulationBody joint)
@@ -101,49 +137,21 @@ namespace RosSharp.Control
         private void SetSpeed(ArticulationBody joint, float wheelSpeed = float.NaN)
         {
             ArticulationDrive drive = joint.xDrive;
-            if (float.IsNaN(wheelSpeed))
-            {
-                drive.targetVelocity = ((2 * maxLinearSpeed) / wheelRadius) * Mathf.Rad2Deg * (int)direction;
-            }
-            else
-            {
-                drive.targetVelocity = wheelSpeed;
-            }
+            drive.targetVelocity = float.IsNaN(wheelSpeed)
+                ? ((2 * maxLinearSpeed) / wheelRadius) * Mathf.Rad2Deg
+                : wheelSpeed;
             joint.xDrive = drive;
         }
 
-        private void KeyBoardUpdate()
+        /*
+        private void RobotInput(float speed, float rotSpeed)
         {
-            float moveDirection = Input.GetAxis("Vertical");
-            float inputSpeed;
-            float inputRotationSpeed;
-            if (moveDirection > 0)
-            {
-                inputSpeed = maxLinearSpeed;
-            }
-            else if (moveDirection < 0)
-            {
-                inputSpeed = maxLinearSpeed * -1;
-            }
-            else
-            {
-                inputSpeed = 0;
-            }
+            speed = Mathf.Clamp(speed, -maxLinearSpeed, maxLinearSpeed);
+            rotSpeed = Mathf.Clamp(rotSpeed, -maxRotationalSpeed, maxRotationalSpeed);
 
-            float turnDirction = Input.GetAxis("Horizontal");
-            if (turnDirction > 0)
-            {
-                inputRotationSpeed = maxRotationalSpeed;
-            }
-            else if (turnDirction < 0)
-            {
-                inputRotationSpeed = maxRotationalSpeed * -1;
-            }
-            else
-            {
-                inputRotationSpeed = 0;
-            }
-            RobotInput(inputSpeed, inputRotationSpeed);
+            float wheel1Rotation = speed / wheelRadius;
+            float wheel2Rotation = wheel1Rotation;
+            float wheelSpeedDiff = (rotSpeed * trackWidth) / wheelRadius;
 
             TwistMsg twist = new TwistMsg();
             twist.linear.x = inputSpeed;
@@ -151,6 +159,7 @@ namespace RosSharp.Control
 
             ros.Publish("cmd_vel", twist);
         }
+        */
 
 
 
@@ -182,14 +191,15 @@ namespace RosSharp.Control
             float wheelSpeedDiff = ((rotSpeed * trackWidth) / wheelRadius);
             if (rotSpeed != 0)
             {
-                wheel1Rotation = (wheel1Rotation + (wheelSpeedDiff / 1)) * Mathf.Rad2Deg;
-                wheel2Rotation = (wheel2Rotation - (wheelSpeedDiff / 1)) * Mathf.Rad2Deg;
+                wheel1Rotation = (wheel1Rotation + wheelSpeedDiff) * Mathf.Rad2Deg;
+                wheel2Rotation = (wheel2Rotation - wheelSpeedDiff) * Mathf.Rad2Deg;
             }
             else
             {
                 wheel1Rotation *= Mathf.Rad2Deg;
                 wheel2Rotation *= Mathf.Rad2Deg;
             }
+
             SetSpeed(wA1, wheel1Rotation);
             SetSpeed(wA2, wheel2Rotation);
         }
@@ -197,10 +207,8 @@ namespace RosSharp.Control
         public void Move(Vector3 point)
         {
             Transform baseLink = transform.GetChild(0).GetChild(2);
-            float angle = Mathf.Atan(Math.Abs(point.x - baseLink.position.x) / Math.Abs(point.z - baseLink.position.z)) * Mathf.Rad2Deg;
-
-            //Debug.Log("Point x: " + point.x + " Point z: " + point.z);
-            //Debug.Log("pos x: " + baseLink.position.x + " Pos z: " + baseLink.position.z);
+            float angle = Mathf.Atan2(point.x - baseLink.position.x, point.z - baseLink.position.z) * Mathf.Rad2Deg;
+            if (angle < 0) angle += 360;
 
             Debug.Log("Angle Before: " + angle);
             if (point.x >= baseLink.position.x)
@@ -224,17 +232,14 @@ namespace RosSharp.Control
 
             Debug.Log("Angle: " + angle);
             float baseAngle = baseLink.rotation.eulerAngles.y - 270;
-            if (baseAngle < 0)
-            {
-                baseAngle += 360;
-            }
-            Debug.Log("BaseAngle: " + baseAngle);
+            if (baseAngle < 0) baseAngle += 360;
 
             float angleDiff = angle - baseAngle;
-            Debug.Log("AngleDiff: " + angleDiff);
+            if (angleDiff > 180) angleDiff -= 360;
+            if (angleDiff < -180) angleDiff += 360;
 
             TwistMsg twist = new TwistMsg();
-            if ((angleDiff > -5 && angleDiff < 5) || angleDiff < -355)
+            if (Mathf.Abs(angleDiff) < 5)
             {
                 Debug.Log("Forward");
                 twist.linear.x = maxLinearSpeed;
@@ -243,7 +248,7 @@ namespace RosSharp.Control
             {
                 twist.angular.z = 0.75;
             }
-            else if (angleDiff < 0)
+            else
             {
                 twist.angular.z = -0.75;
             }
@@ -277,46 +282,42 @@ namespace RosSharp.Control
         {
             // getting the map grid from map manager class
             map = mapManager.mapGrid;
-            gridSize = 100;
+            if (map[x, y] != 0) return false;
 
-            // if the coordinate is not a free space, then it is not a frontier
-            if (map[x, y] != 0)
-            {
-                return false;
-            }
-
-            // checking cell to the left
-            if (x > 0 && map[x - 1, y] == -1)
-            {
-                return true;
-            }
-
-            // checking cell to the right
-            if (x < gridSize - 1 && map[x + 1, y] == -1)
-            {
-                return true;
-            }
-
-            // checking cell down
-            if (y > 0 && mapGrid[x, y - 1] == -1)
-            {
-                return true;
-            }
-
-            // checking cell up
-            if (y < gridSize - 1 && map[x, y + 1] == -1)
-            {
-                return true;
-            }
+            if (x > 0 && map[x - 1, y] == -1) return true;
+            if (x < gridSize - 1 && map[x + 1, y] == -1) return true;
+            if (y > 0 && map[x, y - 1] == -1) return true;
+            if (y < gridSize - 1 && map[x, y + 1] == -1) return true;
 
             // meets none of the cases above so cannot be a frontier
             return false;
-
         }
 
+        public bool FindNextFrontier(out Vector3 result)
+        {
+            map = mapManager.mapGrid;
+            
+            for (int x = 0; x < gridSize; x++)
+            {
+                for (int y = 0; y < gridSize; y++)
+                {
+                    if (IsFrontier(x, y))
+                    {
+                        result = new Vector3(x * cellSize, 0f, y * cellSize);
+                        frontierCount++;
+                        return true;
+                    }
+                }
+            }
+            result = Vector3.zero;
+            return false;
+        }
 
-
-
-
+        bool HasReachedGoal(Vector3 goal)
+        {
+            Transform baseLink = transform.GetChild(0).GetChild(2);
+            Vector3 flatPos = new Vector3(baseLink.position.x, 0f, baseLink.position.z);
+            return Vector3.Distance(flatPos, goal) < goalTolerance;
+        }
     }
 }
