@@ -41,23 +41,77 @@ public class MapManager : MonoBehaviour
 
     public void UpdateMap()
     {
-        if (laserScanSensor == null && laserScanSensor.ranges.Count == 0)
+        if (laserScanSensor == null || laserScanSensor.ranges.Count == 0)
         {
             Debug.LogError("laserScanSensor is null or ranges has count of 0.");
             return;
         }
 
         Vector3 robotPosition = laserScanSensor.transform.position;
+        // Convert world positions to grid indices
+        
+        int robotX = Mathf.FloorToInt(robotPosition.x / cellSize);
+        int robotY = Mathf.FloorToInt(robotPosition.z / cellSize); // z is forward
 
         // basically has the way that the robot is facing / is rotated
         float robotYRotation = laserScanSensor.transform.eulerAngles.y;
 
         // angle increment for determining the angle change every time the laser scan takes a scan
+        if (laserScanSensor.NumMeasurementsPerScan == 0) return;
         float angleIncrement = (laserScanSensor.ScanAngleEndDegrees - laserScanSensor.ScanAngleStartDegrees) / laserScanSensor.NumMeasurementsPerScan;
 
         for (int i = 0; i < laserScanSensor.ranges.Count; i++)
         {
-            
+
+
+            float distance = laserScanSensor.ranges[i];
+            if (distance <= 0f) continue;
+            float angleDeg = laserScanSensor.ScanAngleStartDegrees + i * angleIncrement + robotYRotation;
+            float angleRad = angleDeg * Mathf.Deg2Rad;
+
+            Vector3 laserHitPoint = robotPosition + new Vector3(
+                Mathf.Cos(angleRad) * distance,
+                0,
+                        Mathf.Sin(angleRad) * distance
+                );
+
+            int hitX = Mathf.FloorToInt(laserHitPoint.x / cellSize);
+            int hitY = Mathf.FloorToInt(laserHitPoint.z / cellSize); // use z for 2D plane depth
+
+            MarkLineAsFree(robotX, robotY, hitX, hitY);
+            if (hitX >= 0 && hitX < gridSize && hitY >= 0 && hitY < gridSize)
+            {
+                mapGrid[hitX, hitY] = 1;
+
+            }
+        }
+
+
+        void MarkLineAsFree(int x0, int y0, int x1, int y1)
+        {
+            int dx = Mathf.Abs(x1 - x0);
+            int dy = Mathf.Abs(y1 - y0);
+            int sx = (x0 < x1) ? 1 : -1;
+            int sy = (y0 < y1) ? 1 : -1;
+            int err = dx - dy;
+
+
+            while (x0 != x1 || y0 != y1)
+            {
+                if (x0 >= 0 && x0 < gridSize && y0 >= 0 && y0 < gridSize)
+                {
+                    if (mapGrid[x0, y0] != 1)
+                    {
+                        mapGrid[x0, y0] = 0;
+                    }
+
+
+                }
+
+                int e2 = 2 * err;
+                if (e2 > -dy) { err -= dy; x0 += sx; }
+                if (e2 < dx) { err += dx; y0 += sy; }
+            }
         }
 
 
