@@ -18,6 +18,8 @@ public class MapManager : MonoBehaviour
 
     public LaserScanSensor laserScanSensor;
 
+    public float[] ranges = laserScanSensor.GetRanges();
+
     public void Start()
     {
         InitializeMap();
@@ -41,7 +43,7 @@ public class MapManager : MonoBehaviour
 
     public void UpdateMap()
     {
-        if (laserScanSensor == null || laserScanSensor.ranges.Count == 0)
+        if (laserScanSensor == null || ranges.Count == 0)
         {
             Debug.LogError("laserScanSensor is null or ranges has count of 0.");
             return;
@@ -60,11 +62,11 @@ public class MapManager : MonoBehaviour
         if (laserScanSensor.NumMeasurementsPerScan == 0) return;
         float angleIncrement = (laserScanSensor.ScanAngleEndDegrees - laserScanSensor.ScanAngleStartDegrees) / laserScanSensor.NumMeasurementsPerScan;
 
-        for (int i = 0; i < laserScanSensor.ranges.Count; i++)
+        for (int i = 0; i < ranges.Count; i++)
         {
 
 
-            float distance = laserScanSensor.ranges[i];
+            float distance = ranges[i];
             if (distance <= 0f) continue;
             float angleDeg = laserScanSensor.ScanAngleStartDegrees + i * angleIncrement + robotYRotation;
             float angleRad = angleDeg * Mathf.Deg2Rad;
