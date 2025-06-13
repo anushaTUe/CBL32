@@ -5,10 +5,10 @@ using UnityEngine;
 
 public class CentralController : MonoBehaviour
 {
-    public AGVController moveController; //The AGVController thats under the turtlebot
-    public MapManager mapManager; //The only map manager in the scene
-    public Transform robotTransform; //The base_link transform
-    public Pathfinding pathFinder; //The only Pathfinding in the scene
+    public AGVController moveController;
+    public MapManager mapManager;
+    public Transform robotTransform;
+    public Pathfinding pathFinder;
 
     private bool scanningStarted = false;
 
@@ -17,6 +17,10 @@ public class CentralController : MonoBehaviour
 
     private bool endpointSet = false;
     Vector3 endPoint = Vector3.zero;
+    private int currTarget = 0;
+    private List<Vector3> currentPath;
+
+
     // Start is called before the first frame update
     void Start()
     {
@@ -43,6 +47,7 @@ public class CentralController : MonoBehaviour
             else
             {
                 List<Vector3> path = pathFinder.FindPathMap(robotTransform.position, frontier);
+                currentPath = path;
                 bool reached = followPath(path);
                 if (reached)
                 {
@@ -78,7 +83,6 @@ public class CentralController : MonoBehaviour
 
     private bool followPath(List<Vector3> path)
     {
-        int currTarget = 0;
         while (currTarget < path.Count && Vector3.Distance(robotTransform.position, path[currTarget]) < 0.2f)
         {
             currTarget++;
@@ -86,7 +90,7 @@ public class CentralController : MonoBehaviour
 
         if (currTarget < path.Count)
         {
-            Debug.Log(path[currTarget]);
+            //Debug.Log(path[currTarget]);
             moveController.Move(path[currTarget]);
         }
         else
@@ -94,9 +98,28 @@ public class CentralController : MonoBehaviour
             Debug.Log("Path end");
             return true;
         }
-        
+
         return false;
         //Debug.Log(path[currTarget]);
+    }
+
+    void OnDrawGizmos()
+    {
+        if (currentPath == null || currentPath.Count < 2)
+            return;
+
+        Gizmos.color = Color.blue;
+
+        for (int i = 0; i < currentPath.Count - 1; i++)
+        {
+            Gizmos.DrawLine(currentPath[i], currentPath[i + 1]);
+        }
+
+        // Optionally draw small spheres at each waypoint
+        foreach (Vector3 point in currentPath)
+        {
+            Gizmos.DrawSphere(point, 0.05f);
+        }
     }
 
 }
