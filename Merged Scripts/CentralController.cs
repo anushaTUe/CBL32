@@ -9,6 +9,7 @@ public class CentralController : MonoBehaviour
     public MapManager mapManager;
     public Transform robotTransform;
     public Pathfinding pathFinder;
+    public LaserScanScript scanner;
 
     private bool scanningStarted = false;
 
@@ -19,6 +20,7 @@ public class CentralController : MonoBehaviour
     Vector3 endPoint = Vector3.zero;
     private int currTarget = 0;
     private List<Vector3> currentPath;
+    private Vector3 currFrontier;
 
 
     // Start is called before the first frame update
@@ -43,12 +45,21 @@ public class CentralController : MonoBehaviour
             {
                 Debug.Log("No frontiers left");
                 frontiersFound = true;
-            }
-            else
+            } else if (mapManager.updated)
             {
                 List<Vector3> path = pathFinder.FindPathMap(robotTransform.position, frontier);
                 currentPath = path;
+                currTarget = 0;
                 bool reached = followPath(path);
+                if (reached)
+                {
+                    moveController.Stop();
+                }
+                mapManager.updated = false;
+            }
+            else
+            {
+                bool reached = followPath(currentPath);
                 if (reached)
                 {
                     moveController.Stop();
@@ -58,15 +69,18 @@ public class CentralController : MonoBehaviour
         else if (!done)
         {
             //Making a random endpoint and then going towards it
-            Debug.Log("Going to endpoint");
             if (endpointSet == false)
             {
+                scanner.shouldScan = false;
+                Debug.Log("Going to endpoint");
                 endPoint = mapManager.RandomPoint();
+                currTarget = 0;
+                List<Vector3> path = pathFinder.FindPathMap(robotTransform.position, endPoint);
+                currentPath = path;
+                
                 endpointSet = true;
             }
-
-            List<Vector3> path = pathFinder.FindPathMap(robotTransform.position, endPoint);
-            bool reached = followPath(path);
+            bool reached = followPath(currentPath);
             if (reached)
             {
                 moveController.Stop();

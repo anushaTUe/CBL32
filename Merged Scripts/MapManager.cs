@@ -4,13 +4,14 @@ using RosSharp.Control;
 
 public class MapManager : MonoBehaviour
 {
-    public Vector2 gridWorldSize; //10 x10 is the size of the plane then adjust the empty objects transofrm to center it
-    public float cellSize = 0.1f; //0.1f works well can change tho
+    public Vector2 gridWorldSize;
+    public float cellSize;
     MapNode[,] grid;
     
     int gridSizeX, gridSizeY;
-    private LaserScanScript scanner; //The LaserScanScript under the turtlebot
-    public Transform robotTransform; //The base_link transform
+    private LaserScanScript scanner;
+    public Transform robotTransform;
+    public bool updated = false;
 
     void Awake()
     {
@@ -80,12 +81,17 @@ public class MapManager : MonoBehaviour
                 if (currNode.state == -1)
                 {
                     currNode.state = 0;
+                    updated = true;
                 }
 
                 distance += cellSize;
             }
 
-            hitNode.state = 1;
+            if (hitNode.state != 1)
+            {
+                hitNode.state = 1;
+                updated = true;
+            }
         }
     }
 

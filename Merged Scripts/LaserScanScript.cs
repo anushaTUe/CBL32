@@ -6,9 +6,8 @@ namespace RosSharp.Control
 {
     public class LaserScanScript : MonoBehaviour
     {
-        public Transform robotBase; //The base_link transfrom
-        public GameObject obstaclePrefab; //Make a simple object prefab make sure it's small tho, attach that to this
-        //I made a cube who's scale was x:0.1, y:1.5 ,z:0.1
+        public Transform robotBase;
+        public GameObject obstaclePrefab;
 
         private float[] ranges;
         private float angleStart;
@@ -21,8 +20,9 @@ namespace RosSharp.Control
 
         private ROSConnection ros;
         public MapManager mapManager; //should be the only map managager in the project
-        public GameObject objectParent; //An empty object under whcih all the obstacle will be placed
-        public float gapSize = 0.01f; //leave as is
+        public GameObject objectParent; //Make a simple object prefab make sure it's small tho, attach that to this
+        public float gapSize = 1.0f;
+        public bool shouldScan = true;
 
         void Start()
         {
@@ -35,6 +35,10 @@ namespace RosSharp.Control
 
         void Scan(LaserScanMsg msg)
         {
+            if (!shouldScan)
+            {
+                return;
+            }
             ranges = msg.ranges;
             angleStart = msg.angle_min;
             angleEnd = msg.angle_max;
