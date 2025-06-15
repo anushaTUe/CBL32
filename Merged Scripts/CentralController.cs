@@ -21,7 +21,7 @@ public class CentralController : MonoBehaviour
     private int currTarget = 0;
     private List<Vector3> currentPath;
     private Vector3 currFrontier;
-
+    public SoundManager soundManager;
 
     // Start is called before the first frame update
     void Start()
@@ -45,6 +45,8 @@ public class CentralController : MonoBehaviour
             {
                 Debug.Log("No frontiers left");
                 frontiersFound = true;
+                soundManager.beep(3);
+                //Mapping is done, so play 3 sounds
             } else if (mapManager.updated)
             {
                 List<Vector3> path = pathFinder.FindPathMap(robotTransform.position, frontier);
@@ -92,6 +94,8 @@ public class CentralController : MonoBehaviour
         {
             //Done 
             moveController.Stop();
+            //Play a single sound
+            soundManager.beep(1);
         }
     }
 
@@ -104,7 +108,6 @@ public class CentralController : MonoBehaviour
 
         if (currTarget < path.Count)
         {
-            //Debug.Log(path[currTarget]);
             moveController.Move(path[currTarget]);
         }
         else
@@ -114,7 +117,6 @@ public class CentralController : MonoBehaviour
         }
 
         return false;
-        //Debug.Log(path[currTarget]);
     }
 
     void OnDrawGizmos()
