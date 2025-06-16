@@ -4,7 +4,7 @@ using System.Collections.Generic;
 public class Pathfinding : MonoBehaviour
 {
     public MapManager map;
-    public SoundManager soundManager;
+	public SoundManager soundManager;
     [SerializeField] private LayerMask obstacleMask; // assign in Inspector for raycasting
 
     void Awake()
@@ -106,10 +106,8 @@ public class Pathfinding : MonoBehaviour
                 }
             }
         }
-
-        Debug.Log("No path found to endpoint!");
-        //Play two sounds
-        soundManager.beep(2);
+		Debug.Log("No path found to end point");
+		soundManager.beep(2);
         return null;
     }
     

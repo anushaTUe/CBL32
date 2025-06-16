@@ -153,6 +153,7 @@ namespace RosSharp.Control
                 twist.angular.z = -0.75;
             }
             ros.Publish("cmd_vel", twist);
+            //remove these for actual robot
             ReceiveROSCmd(twist);
             RobotInput(rosLinear, rosAngular);
         }
