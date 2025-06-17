@@ -78,6 +78,7 @@ namespace RosSharp.Control
                 
                 points[i] = point;
                 
+                //Place an object at the end of the range
                 if (range >= rangeMin && range <= rangeMax && !hit(point) )
                 {
                     GameObject obstacle = Instantiate(obstaclePrefab, point, Quaternion.identity);
@@ -89,7 +90,8 @@ namespace RosSharp.Control
             }
             mapManager.UpdateMap(points, angles, ranges);
         }
-
+        
+        //Method to check if the there are already obstacles at the end of the lidar scanner input
         private bool hit(Vector3 point)
         {
             Collider[] hits = Physics.OverlapSphere(point, gapSize);
@@ -106,6 +108,8 @@ namespace RosSharp.Control
     }
 }
 
+
+//Some old code we used for reference just ignore
 /*
 using UnityEngine;
    using Unity.Robotics.ROSTCPConnector;

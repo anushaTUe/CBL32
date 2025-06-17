@@ -20,6 +20,7 @@ public class MapManager : MonoBehaviour
         CreateGrid();
     }
 
+    //This method creates an empty grid
     void CreateGrid()
     {
         grid = new MapNode[gridSizeX, gridSizeY];
@@ -58,6 +59,7 @@ public class MapManager : MonoBehaviour
         return neighbours;
     }
 
+    //Updates the map based on the LIDAR input
     public void UpdateMap(Vector3[] hitPoints, float[] angles, float[] ranges)
     {
         Vector3 robotPosition = robotTransform.position;
@@ -95,6 +97,7 @@ public class MapManager : MonoBehaviour
         }
     }
 
+    //Converts a vector3 to a node
     public MapNode NodeFromWorldPoint(Vector3 worldPosition)
     {
         float percentX = Mathf.Clamp01((worldPosition.x + gridWorldSize.x / 2) / gridWorldSize.x);
@@ -105,6 +108,8 @@ public class MapManager : MonoBehaviour
         return grid[x, y];
     }
     public List<MapNode> gridPath;
+    
+    //Draws the map in the scene
     void OnDrawGizmos()
     {
         Gizmos.DrawWireCube(transform.position, new Vector3(gridWorldSize.x, 1, gridWorldSize.y));
@@ -129,7 +134,8 @@ public class MapManager : MonoBehaviour
             Gizmos.DrawCube(node.WorldPosition, Vector3.one * (cellSize));
         }
     }
-
+    
+    //Method to get the next frontier in the map
     public Vector3 NextFrontierPoint()
     {
         foreach (MapNode node in grid)
@@ -143,6 +149,7 @@ public class MapManager : MonoBehaviour
         return new Vector3(0, -100, 0);
     }
 
+    //Method to check if a node is a frontier
     private bool IsFrontier(MapNode node)
     {
         if (node.state == 0 || node.state == 1)
@@ -160,7 +167,8 @@ public class MapManager : MonoBehaviour
 
         return false;
     }
-
+    
+    //Method to check if the scanning has started
     public bool ScannerStarted()
     {
         foreach (MapNode node in grid)
@@ -173,13 +181,30 @@ public class MapManager : MonoBehaviour
 
         return false;
     }
-
+    
+    //Method to get a random endpoint in the map
     public Vector3 RandomPoint()
     {
         List<MapNode> nodes = new List<MapNode>();
         foreach (MapNode node in grid)
         {
             if (node.state == 0)
+            {
+                nodes.Add(node);
+            }
+        }
+
+        MapNode target = nodes[Random.Range(0, nodes.Count)];
+        return target.WorldPosition;
+    }
+    
+    //Method to get a point out of bounds
+    public Vector3 GetOutOfBounds()
+    {
+        List<MapNode> nodes = new List<MapNode>();
+        foreach (MapNode node in grid)
+        {
+            if (node.state == -1)
             {
                 nodes.Add(node);
             }

@@ -14,8 +14,6 @@ public class SoundManager : MonoBehaviour
     {
         ros = ROSConnection.GetOrCreateInstance();
         ros.RegisterPublisher<SoundMsg>(soundTopicName);
-
-        SendBeep(1);
     }
 
     void SendBeep(byte value)

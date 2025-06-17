@@ -137,7 +137,7 @@ namespace RosSharp.Control
             if (angleDiff < -180) angleDiff += 360;
 
             TwistMsg twist = new TwistMsg();
-            if (Mathf.Abs(angleDiff) < 5f)
+            if (Mathf.Abs(angleDiff) < 2.5f)
             {
                 twist.linear.x = -maxLinearSpeed;
                 twist.angular.z = 0;
@@ -154,8 +154,8 @@ namespace RosSharp.Control
             }
             ros.Publish("cmd_vel", twist);
             //remove these for actual robot
-            ReceiveROSCmd(twist);
-            RobotInput(rosLinear, rosAngular);
+            //ReceiveROSCmd(twist);
+            //RobotInput(rosLinear, rosAngular);
         }
 
         public void Stop()
@@ -164,8 +164,8 @@ namespace RosSharp.Control
             twist.linear.x = 0;
             twist.angular.x = 0;
             ros.Publish("cmd_vel", twist);
-            ReceiveROSCmd(twist);
-            RobotInput(rosLinear, rosAngular);
+            //ReceiveROSCmd(twist);
+            //RobotInput(rosLinear, rosAngular);
         }
     }
 }

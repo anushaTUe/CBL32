@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using RosSharp.Control;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class CentralController : MonoBehaviour
 {
@@ -15,6 +16,8 @@ public class CentralController : MonoBehaviour
 
     private bool frontiersFound = false;
     private bool done = false;
+    private bool testOutOfBounds = false;
+    private bool doneBeeps = false;
 
     private bool endpointSet = false;
     Vector3 endPoint = Vector3.zero;
@@ -22,11 +25,15 @@ public class CentralController : MonoBehaviour
     private List<Vector3> currentPath;
     private Vector3 currFrontier;
 	public SoundManager soundManager;
+    
+    public Button redoButton;
+    public Button boundsButton;
 
     // Start is called before the first frame update
     void Start()
     {
-        
+        redoButton.gameObject.SetActive(false);
+        boundsButton.gameObject.SetActive(false);
     }
 
     // Update is called once per frame
@@ -45,6 +52,8 @@ public class CentralController : MonoBehaviour
             {
                 Debug.Log("No frontiers left");
                 frontiersFound = true;
+                
+                //Make the beeps
 				soundManager.beep(3);
             } else if (mapManager.updated)
             {
@@ -75,13 +84,31 @@ public class CentralController : MonoBehaviour
                 scanner.shouldScan = false;
                 Debug.Log("Going to endpoint");
                 endPoint = mapManager.RandomPoint();
+                
+                //if we want to test an endpoint it can't get to
+                if (testOutOfBounds)
+                {
+                    endPoint = mapManager.GetOutOfBounds();
+                    testOutOfBounds = false;
+                }
+                
+                //find a path to the endpoint
                 currTarget = 0;
                 List<Vector3> path = pathFinder.FindPathMap(robotTransform.position, endPoint);
+
+                if (path == null)
+                {
+                    Debug.Log("No path found");
+                    soundManager.beep(1);
+                    done = true;
+                }
+
                 currentPath = path;
-                
                 endpointSet = true;
             }
             bool reached = followPath(currentPath);
+            
+            //Check if it reached the end point and stop the robot
             if (reached)
             {
                 moveController.Stop();
@@ -89,16 +116,26 @@ public class CentralController : MonoBehaviour
             }
         }
 
-        if (done)
+        if (done && !doneBeeps)
         {
             //Done 
             moveController.Stop();
 			soundManager.beep(1);
+            
+            //Allow to redo the second phase for testing purposes
+            redoButton.gameObject.SetActive(true);
+            boundsButton.gameObject.SetActive(true);
+            doneBeeps = true;
         }
     }
 
     private bool followPath(List<Vector3> path)
     {
+        if (path == null)
+        {
+            return false;
+        }
+        
         while (currTarget < path.Count && Vector3.Distance(robotTransform.position, path[currTarget]) < 0.2f)
         {
             currTarget++;
@@ -136,6 +173,21 @@ public class CentralController : MonoBehaviour
         {
             Gizmos.DrawSphere(point, 0.05f);
         }
+    }
+
+    public void RedoPhaseGuide()
+    {
+        done = false;
+        doneBeeps = false;
+        endpointSet = false;
+        redoButton.gameObject.SetActive(false);
+        boundsButton.gameObject.SetActive(false);
+    }
+
+    public void BoundsButtonClicked()
+    {
+        testOutOfBounds = true;
+        RedoPhaseGuide();
     }
 
 }
